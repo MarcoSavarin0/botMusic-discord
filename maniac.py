@@ -55,7 +55,7 @@ def run_bot():
                 voice_client = await ctx.author.voice.channel.connect()
                 voice_clients[ctx.guild.id] = voice_client
         except Exception as e:
-            print(e)
+            await ctx.send(f"Error connecting to voice channel: {e}")
             return
 
         try:
@@ -71,38 +71,42 @@ def run_bot():
             player = discord.FFmpegOpusAudio(song, **ffmpeg_options)
 
             if voice_client.is_playing():
-                voice_client.stop()
-            voice_clients[ctx.guild.id].play(player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), client.loop))
+                queues[ctx.guild.id].append(link)
+                await ctx.send(f"Added to queue: {data['title']}")
+            else:
+                voice_clients[ctx.guild.id].play(player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), client.loop))
+                await ctx.send(f"Now playing: {data['title']}")
         except Exception as e:
-            print(e)
+            await ctx.send(f"Error playing song: {e}")
 
     @client.command(name="limpia_cola")
     async def clear_queue(ctx):
         if ctx.guild.id in queues:
             queues[ctx.guild.id].clear()
-            await ctx.send("Tenes la cola vacia")
+            await ctx.send("Queue cleared")
         else:
-            await ctx.send("No hay canciones en mi cola")
+            await ctx.send("Queue is already empty")
 
     @client.command(name="pausalo")
     async def pause(ctx):
         try:
             voice_clients[ctx.guild.id].pause()
+            await ctx.send("Playback paused")
         except Exception as e:
-            print(e)
+            await ctx.send(f"Error pausing: {e}")
 
     @client.command(name="prendelo")
     async def resume(ctx):
         try:
             voice_clients[ctx.guild.id].resume()
+            await ctx.send("Playback resumed")
         except Exception as e:
-            print(e)
-
+            await ctx.send(f"Error resuming: {e}")
 
     @client.command(name="cola")
     async def queue(ctx, *, url):
         queues[ctx.guild.id].append(url)
-        await ctx.send("metido en la cola")
+        await ctx.send("Added to queue")
 
     @client.command(name="andate")
     async def disconnect(ctx):
@@ -112,13 +116,13 @@ def run_bot():
             else:
                 if ctx.author.id not in vote_disconnect[ctx.guild.id]:
                     vote_disconnect[ctx.guild.id].append(ctx.author.id)
-                    await ctx.send(f"{ctx.author.name} ha votado para desconectar. {len(vote_disconnect[ctx.guild.id])}/{required_votes(ctx)} votos necesarios.")
+                    await ctx.send(f"{ctx.author.name} voted to disconnect. {len(vote_disconnect[ctx.guild.id])}/{required_votes(ctx)} votes needed.")
                     if len(vote_disconnect[ctx.guild.id]) >= required_votes(ctx):
                         await force_disconnect(ctx)
                 else:
-                    await ctx.send("Ya has votado para desconectar.")
+                    await ctx.send("You have already voted to disconnect.")
         except Exception as e:
-            print(e)
+            await ctx.send(f"Error: {e}")
 
     @client.command(name="siguiente")
     async def next(ctx):
@@ -128,13 +132,14 @@ def run_bot():
             else:
                 if ctx.author.id not in vote_next[ctx.guild.id]:
                     vote_next[ctx.guild.id].append(ctx.author.id)
-                    await ctx.send(f"{ctx.author.name} ha votado para saltar la canción. {len(vote_next[ctx.guild.id])}/{required_votes(ctx)} votos necesarios.")
+                    await ctx.send(f"{ctx.author.name} voted to skip. {len(vote_next[ctx.guild.id])}/{required_votes(ctx)} votes needed.")
                     if len(vote_next[ctx.guild.id]) >= required_votes(ctx):
                         await force_next(ctx)
                 else:
-                    await ctx.send("Ya has votado para saltar la canción.")
+                    await ctx.send("You have already voted to skip.")
         except Exception as e:
-            print(e)
+            await ctx.send(f"Error: {e}")
+
     @client.command(name="lista")
     async def listqueue(ctx):
         try:
@@ -147,26 +152,28 @@ def run_bot():
                         queue_list.append(title)
                     else:
                         queue_list.append(link)
-                    await ctx.send(f"En mi cola hay {len(queue_list)} canciones:\n" + "\n".join(queue_list))    
+                await ctx.send(f"Queue ({len(queue_list)} songs):\n" + "\n".join(queue_list))    
             else:
-                await ctx.send("No hay canciones en mi cola")
+                await ctx.send("Queue is empty")
         except Exception as e:
-            print(e)
+            await ctx.send(f"Error displaying queue: {e}")
+
     @client.command(name="ayudame")
     async def help(ctx):
         embed = discord.Embed(title="Ayuda - Comandos del Bot de Música",
-                            description="Aquí están los comandos disponibles:",
-                            color=discord.Color.blue())
+                              description="Aquí están los comandos disponibles:",
+                              color=discord.Color.blue())
 
         embed.add_field(name="poneme", value="Reproduce una canción.", inline=False)
         embed.add_field(name="limpia_cola", value="Limpia la cola de reproducción.", inline=False)
-        embed.add_field(name="pausalo", value="Pausa la reproducción actual.", inline=False)
-        embed.add_field(name="prendelo", value="Reanuda la reproducción pausada.", inline=False)
+        embed.add_field(name="para", value="Pausa la reproducción actual.", inline=False)
+        embed.add_field(name="segui", value="Reanuda la reproducción pausada.", inline=False)
         embed.add_field(name="lista", value="Muestra las canciones en la cola de reproducción.", inline=False)
-        embed.add_field(name="andate", value="Desconecta el bot del canal de voz.", inline=False)
-        embed.add_field(name="siguiente", value="Salta a la siguiente canción en la cola.", inline=False)
+        embed.add_field(name="juira", value="Desconecta el bot del canal de voz.", inline=False)
+        embed.add_field(name="prosima", value="Salta a la siguiente canción en la cola.", inline=False)
 
         await ctx.send(embed=embed)
+
     async def force_disconnect(ctx):
         try:
             if ctx.guild.id in voice_clients:
@@ -176,7 +183,7 @@ def run_bot():
             else:
                 await ctx.send("No estoy conectado a ningún canal de voz!")
         except Exception as e:
-            print(e)
+            await ctx.send(f"Error: {e}")
         finally:
             vote_disconnect[ctx.guild.id].clear()
 
@@ -190,7 +197,7 @@ def run_bot():
             else:
                 await ctx.send("No hay más canciones en mi cola")
         except Exception as e:
-            print(e)
+            await ctx.send(f"Error: {e}")
         finally:
             vote_next[ctx.guild.id].clear()
 
