@@ -8,6 +8,8 @@ import urllib.parse
 import urllib.request
 import re
 from collections import defaultdict
+import requests
+
 
 def run_bot():
     load_dotenv()
