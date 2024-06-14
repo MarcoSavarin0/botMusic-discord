@@ -75,7 +75,7 @@ def run_bot():
                 await ctx.send(f"Added to queue: {data['title']}")
             else:
                 voice_clients[ctx.guild.id].play(player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), client.loop))
-                await ctx.send(f"Now playing: {data['title']}")
+                await ctx.send(f"Esta sonando (temon): {data['title']}")
         except Exception as e:
             await ctx.send(f"Error playing song: {e}")
 
@@ -83,15 +83,15 @@ def run_bot():
     async def clear_queue(ctx):
         if ctx.guild.id in queues:
             queues[ctx.guild.id].clear()
-            await ctx.send("Queue cleared")
+            await ctx.send("Cola limpia")
         else:
-            await ctx.send("Queue is already empty")
+            await ctx.send("Ya la cola está vacía")
 
     @client.command(name="para")
     async def pause(ctx):
         try:
             voice_clients[ctx.guild.id].pause()
-            await ctx.send("Playback paused")
+            await ctx.send("Pausado por exceso de swag")
         except Exception as e:
             await ctx.send(f"Error pausing: {e}")
 
@@ -99,14 +99,14 @@ def run_bot():
     async def resume(ctx):
         try:
             voice_clients[ctx.guild.id].resume()
-            await ctx.send("Playback resumed")
+            await ctx.send("Seguimos con el swag")
         except Exception as e:
             await ctx.send(f"Error resuming: {e}")
 
     @client.command(name="cola")
     async def queue(ctx, *, url):
         queues[ctx.guild.id].append(url)
-        await ctx.send("Added to queue")
+        await ctx.send("Agragado a la cola")
 
     @client.command(name="juira")
     async def disconnect(ctx):
@@ -116,11 +116,11 @@ def run_bot():
             else:
                 if ctx.author.id not in vote_disconnect[ctx.guild.id]:
                     vote_disconnect[ctx.guild.id].append(ctx.author.id)
-                    await ctx.send(f"{ctx.author.name} voted to disconnect. {len(vote_disconnect[ctx.guild.id])}/{required_votes(ctx)} votes needed.")
+                    await ctx.send(f"{ctx.author.name} voto para desconectarme :/. {len(vote_disconnect[ctx.guild.id])}/{required_votes(ctx)} votes needed.")
                     if len(vote_disconnect[ctx.guild.id]) >= required_votes(ctx):
                         await force_disconnect(ctx)
                 else:
-                    await ctx.send("You have already voted to disconnect.")
+                    await ctx.send("Ya votaste para desconectar pedazo de gil.")
         except Exception as e:
             await ctx.send(f"Error: {e}")
 
@@ -132,11 +132,11 @@ def run_bot():
             else:
                 if ctx.author.id not in vote_next[ctx.guild.id]:
                     vote_next[ctx.guild.id].append(ctx.author.id)
-                    await ctx.send(f"{ctx.author.name} voted to skip. {len(vote_next[ctx.guild.id])}/{required_votes(ctx)} votes needed.")
+                    await ctx.send(f"{ctx.author.name} voto para la siguiente cancion con swag. {len(vote_next[ctx.guild.id])}/{required_votes(ctx)} se necesitan votos.")
                     if len(vote_next[ctx.guild.id]) >= required_votes(ctx):
                         await force_next(ctx)
                 else:
-                    await ctx.send("You have already voted to skip.")
+                    await ctx.send("Ya votaste para saltar pedazo de gil.")
         except Exception as e:
             await ctx.send(f"Error: {e}")
 
@@ -152,9 +152,9 @@ def run_bot():
                         queue_list.append(title)
                     else:
                         queue_list.append(link)
-                await ctx.send(f"Queue ({len(queue_list)} songs):\n" + "\n".join(queue_list))    
+                await ctx.send(f"En la cola hay ({len(queue_list)} canciones):\n" + "\n".join(queue_list)) 
             else:
-                await ctx.send("Queue is empty")
+                await ctx.send("La cola está vacía")
         except Exception as e:
             await ctx.send(f"Error displaying queue: {e}")
 
