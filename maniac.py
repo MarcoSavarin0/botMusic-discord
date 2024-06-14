@@ -87,7 +87,7 @@ def run_bot():
         else:
             await ctx.send("Queue is already empty")
 
-    @client.command(name="pausalo")
+    @client.command(name="para")
     async def pause(ctx):
         try:
             voice_clients[ctx.guild.id].pause()
@@ -95,7 +95,7 @@ def run_bot():
         except Exception as e:
             await ctx.send(f"Error pausing: {e}")
 
-    @client.command(name="prendelo")
+    @client.command(name="segui")
     async def resume(ctx):
         try:
             voice_clients[ctx.guild.id].resume()
@@ -108,7 +108,7 @@ def run_bot():
         queues[ctx.guild.id].append(url)
         await ctx.send("Added to queue")
 
-    @client.command(name="andate")
+    @client.command(name="juira")
     async def disconnect(ctx):
         try:
             if ctx.author.guild_permissions.administrator:
@@ -124,7 +124,7 @@ def run_bot():
         except Exception as e:
             await ctx.send(f"Error: {e}")
 
-    @client.command(name="siguiente")
+    @client.command(name="prosima")
     async def next(ctx):
         try:
             if ctx.author.guild_permissions.administrator:
