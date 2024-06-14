@@ -1,0 +1,5 @@
+discord
+yt-dlp
+python-dotenv
+asyncio
+PyNaCl

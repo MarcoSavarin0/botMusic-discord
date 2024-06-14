@@ -7,16 +7,21 @@ from dotenv import load_dotenv
 import urllib.parse
 import urllib.request
 import re
+from collections import defaultdict
 
 def run_bot():
     load_dotenv()
-    TOKEN = os.getenv('discord_token')
+    TOKEN = os.getenv('DISCORD_TOKEN')
     intents = discord.Intents.default()
     intents.message_content = True
+    intents.voice_states = True
     client = commands.Bot(command_prefix=".", intents=intents)
 
-    queues = {}
+    queues = defaultdict(list)
     voice_clients = {}
+    vote_disconnect = defaultdict(list)
+    vote_next = defaultdict(list)
+    
     youtube_base_url = 'https://www.youtube.com/'
     youtube_results_url = youtube_base_url + 'results?'
     youtube_watch_url = youtube_base_url + 'watch?v='
@@ -24,87 +29,174 @@ def run_bot():
     ytdl = yt_dlp.YoutubeDL(yt_dl_options)
 
     ffmpeg_options = {
-        'executable': 'C:/ffmpeg/ffmpeg.exe', 
-        'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn -filter:a "volume=0.25"'}
+        'executable': 'ffmpeg', 
+        'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+        'options': '-vn -filter:a "volume=0.25"'
+    }
 
     @client.event
     async def on_ready():
         print(f'{client.user} is now jamming')
 
     async def play_next(ctx):
-        if queues[ctx.guild.id] != []:
+        if queues[ctx.guild.id]:
             link = queues[ctx.guild.id].pop(0)
             await play(ctx, link=link)
-    
-    @client.command(name="play")
+        else:
+            await asyncio.sleep(60)
+            if ctx.guild.id in voice_clients and not voice_clients[ctx.guild.id].is_playing():
+                await disconnect(ctx)
+
+    @client.command(name="poneme")
     async def play(ctx, *, link):
         try:
-            voice_client = await ctx.author.voice.channel.connect()
-            voice_clients[voice_client.guild.id] = voice_client
+            voice_client = voice_clients.get(ctx.guild.id)
+            if not voice_client:
+                voice_client = await ctx.author.voice.channel.connect()
+                voice_clients[ctx.guild.id] = voice_client
         except Exception as e:
             print(e)
+            return
 
         try:
-
             if youtube_base_url not in link:
-                query_string = urllib.parse.urlencode({
-                    'search_query': link
-                })
-
-                content = urllib.request.urlopen(
-                    youtube_results_url + query_string
-                )
-
+                query_string = urllib.parse.urlencode({'search_query': link})
+                content = urllib.request.urlopen(youtube_results_url + query_string)
                 search_results = re.findall(r'/watch\?v=(.{11})', content.read().decode())
-
                 link = youtube_watch_url + search_results[0]
 
             loop = asyncio.get_event_loop()
             data = await loop.run_in_executor(None, lambda: ytdl.extract_info(link, download=False))
-
             song = data['url']
             player = discord.FFmpegOpusAudio(song, **ffmpeg_options)
 
+            if voice_client.is_playing():
+                voice_client.stop()
             voice_clients[ctx.guild.id].play(player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), client.loop))
         except Exception as e:
             print(e)
 
-    @client.command(name="clear_queue")
+    @client.command(name="limpia_cola")
     async def clear_queue(ctx):
         if ctx.guild.id in queues:
             queues[ctx.guild.id].clear()
-            await ctx.send("Queue cleared!")
+            await ctx.send("Tenes la cola vacia")
         else:
-            await ctx.send("There is no queue to clear")
+            await ctx.send("No hay canciones en mi cola")
 
-    @client.command(name="pause")
+    @client.command(name="pausalo")
     async def pause(ctx):
         try:
             voice_clients[ctx.guild.id].pause()
         except Exception as e:
             print(e)
 
-    @client.command(name="resume")
+    @client.command(name="prendelo")
     async def resume(ctx):
         try:
             voice_clients[ctx.guild.id].resume()
         except Exception as e:
             print(e)
 
-    @client.command(name="stop")
-    async def stop(ctx):
+
+    @client.command(name="cola")
+    async def queue(ctx, *, url):
+        queues[ctx.guild.id].append(url)
+        await ctx.send("metido en la cola")
+
+    @client.command(name="andate")
+    async def disconnect(ctx):
         try:
-            voice_clients[ctx.guild.id].stop()
-            await voice_clients[ctx.guild.id].disconnect()
-            del voice_clients[ctx.guild.id]
+            if ctx.author.guild_permissions.administrator:
+                await force_disconnect(ctx)
+            else:
+                if ctx.author.id not in vote_disconnect[ctx.guild.id]:
+                    vote_disconnect[ctx.guild.id].append(ctx.author.id)
+                    await ctx.send(f"{ctx.author.name} ha votado para desconectar. {len(vote_disconnect[ctx.guild.id])}/{required_votes(ctx)} votos necesarios.")
+                    if len(vote_disconnect[ctx.guild.id]) >= required_votes(ctx):
+                        await force_disconnect(ctx)
+                else:
+                    await ctx.send("Ya has votado para desconectar.")
         except Exception as e:
             print(e)
 
-    @client.command(name="queue")
-    async def queue(ctx, *, url):
-        if ctx.guild.id not in queues:
-            queues[ctx.guild.id] = []
-        queues[ctx.guild.id].append(url)
-        await ctx.send("Added to queue!")
+    @client.command(name="siguiente")
+    async def next(ctx):
+        try:
+            if ctx.author.guild_permissions.administrator:
+                await force_next(ctx)
+            else:
+                if ctx.author.id not in vote_next[ctx.guild.id]:
+                    vote_next[ctx.guild.id].append(ctx.author.id)
+                    await ctx.send(f"{ctx.author.name} ha votado para saltar la canción. {len(vote_next[ctx.guild.id])}/{required_votes(ctx)} votos necesarios.")
+                    if len(vote_next[ctx.guild.id]) >= required_votes(ctx):
+                        await force_next(ctx)
+                else:
+                    await ctx.send("Ya has votado para saltar la canción.")
+        except Exception as e:
+            print(e)
+    @client.command(name="lista")
+    async def listqueue(ctx):
+        try:
+            if ctx.guild.id in queues and queues[ctx.guild.id]:
+                queue_list = []
+                for link in queues[ctx.guild.id]:
+                    if youtube_base_url in link:
+                        data = await asyncio.get_event_loop().run_in_executor(None, lambda: ytdl.extract_info(link, download=False))
+                        title = data.get("title", "Unknown title")
+                        queue_list.append(title)
+                    else:
+                        queue_list.append(link)
+                    await ctx.send(f"En mi cola hay {len(queue_list)} canciones:\n" + "\n".join(queue_list))    
+            else:
+                await ctx.send("No hay canciones en mi cola")
+        except Exception as e:
+            print(e)
+    @client.command(name="ayudame")
+    async def help(ctx):
+        embed = discord.Embed(title="Ayuda - Comandos del Bot de Música",
+                            description="Aquí están los comandos disponibles:",
+                            color=discord.Color.blue())
+
+        embed.add_field(name="poneme", value="Reproduce una canción.", inline=False)
+        embed.add_field(name="limpia_cola", value="Limpia la cola de reproducción.", inline=False)
+        embed.add_field(name="pausalo", value="Pausa la reproducción actual.", inline=False)
+        embed.add_field(name="prendelo", value="Reanuda la reproducción pausada.", inline=False)
+        embed.add_field(name="lista", value="Muestra las canciones en la cola de reproducción.", inline=False)
+        embed.add_field(name="andate", value="Desconecta el bot del canal de voz.", inline=False)
+        embed.add_field(name="siguiente", value="Salta a la siguiente canción en la cola.", inline=False)
+
+        await ctx.send(embed=embed)
+    async def force_disconnect(ctx):
+        try:
+            if ctx.guild.id in voice_clients:
+                await voice_clients[ctx.guild.id].disconnect()
+                del voice_clients[ctx.guild.id]
+                await ctx.send("Me desconecté con swag!")
+            else:
+                await ctx.send("No estoy conectado a ningún canal de voz!")
+        except Exception as e:
+            print(e)
+        finally:
+            vote_disconnect[ctx.guild.id].clear()
+
+    async def force_next(ctx):
+        try:
+            if ctx.guild.id in queues and queues[ctx.guild.id]:
+                if voice_clients[ctx.guild.id].is_playing():
+                    voice_clients[ctx.guild.id].stop()
+                link = queues[ctx.guild.id].pop(0)
+                await play(ctx, link=link)
+            else:
+                await ctx.send("No hay más canciones en mi cola")
+        except Exception as e:
+            print(e)
+        finally:
+            vote_next[ctx.guild.id].clear()
+
+    def required_votes(ctx):
+        voice_channel = ctx.author.voice.channel
+        listeners = len(voice_channel.members)
+        return max(1, int(listeners / 2))
 
     client.run(TOKEN)
