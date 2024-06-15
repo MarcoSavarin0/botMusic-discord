@@ -77,7 +77,10 @@ def run_bot():
                 await ctx.send(f"Added to queue: {data['title']}")
             else:
                 voice_clients[ctx.guild.id].play(player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), client.loop))
-                await ctx.send(f"Esta sonando (temon): {data['title']}")
+                embed = discord.Embed(title="Que temon",
+                                      description=f"Esta sonando (temon): {data['title']}",
+                                      color=discord.Color.red())
+                await ctx.send(embed=embed)
         except Exception as e:
             await ctx.send(f"Error playing song: {e}")
 
@@ -101,14 +104,20 @@ def run_bot():
     async def resume(ctx):
         try:
             voice_clients[ctx.guild.id].resume()
-            await ctx.send("Seguimos con el swag")
+            embed = discord.Embed(title="Que temon",
+                                  description="Reanuda la reproducción pausada",
+                                  color=discord.Color.red())
+            await ctx.send(embed=embed)
         except Exception as e:
             await ctx.send(f"Error resuming: {e}")
 
     @client.command(name="cola")
     async def queue(ctx, *, url):
         queues[ctx.guild.id].append(url)
-        await ctx.send("Agragado a la cola")
+        embed = discord.Embed(title="Cola de reproducción",
+                              description=f"Agregado a la cola: {url}",
+                              color=discord.Color.blue())
+        await ctx.send(embed=embed)
 
     @client.command(name="juira")
     async def disconnect(ctx):
@@ -134,11 +143,17 @@ def run_bot():
             else:
                 if ctx.author.id not in vote_next[ctx.guild.id]:
                     vote_next[ctx.guild.id].append(ctx.author.id)
-                    await ctx.send(f"{ctx.author.name} voto para la siguiente cancion con swag. {len(vote_next[ctx.guild.id])}/{required_votes(ctx)} se necesitan votos.")
+                    embed = discord.Embed(title="Queres sacarle el swag?",
+                                          description=f"{ctx.author.name} voto para la siguiente cancion con swag. {len(vote_next[ctx.guild.id])}/{required_votes(ctx)} se necesitan votos.",
+                                          color=discord.Color.red())
+                    await ctx.send(embed=embed)
                     if len(vote_next[ctx.guild.id]) >= required_votes(ctx):
                         await force_next(ctx)
                 else:
-                    await ctx.send("Ya votaste para saltar pedazo de gil.")
+                    embed = discord.Embed(title="Queres sacarle el swag?",
+                                          description=f"{ctx.author.name} ya votaste para la siguiente cancion con swag. {len(vote_next[ctx.guild.id])}/{required_votes(ctx)} se necesitan votos.",
+                                          color=discord.Color.red())
+                    await ctx.send(embed=embed)
         except Exception as e:
             await ctx.send(f"Error: {e}")
 
@@ -154,7 +169,11 @@ def run_bot():
                         queue_list.append(title)
                     else:
                         queue_list.append(link)
-                await ctx.send(f"En la cola hay ({len(queue_list)} canciones):\n" + "\n".join(queue_list)) 
+                embed = discord.Embed(title="Cola de reproducción",
+                                      description=(f"En la cola hay ({len(queue_list)} canciones):\n" + "\n".join(queue_list)),
+                                      color=discord.Color.blue())
+                await ctx.send(embed=embed)
+                
             else:
                 await ctx.send("La cola está vacía")
         except Exception as e:
