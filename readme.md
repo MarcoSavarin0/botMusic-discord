@@ -74,7 +74,7 @@ Si deseas modificar el código, sigue estos pasos:
 ```bash
  docker pull marcosava/botmusic:tagname
 ```
-(por ahora esta en v2)
+(por ahora esta en v3)
 
 
 
