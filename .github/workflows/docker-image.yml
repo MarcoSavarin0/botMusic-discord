@@ -1,0 +1,24 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+
+    runs-on: self-hosted
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Stop and remove existing container (if exists)
+      run: |
+        docker stop contenedor_bot || true
+        docker rm contenedor_bot || true
+    - name: Build the Docker image
+      run: docker build -t bot-musica:$(date +%s) .  
+    - name: Build the Docker image
+      run: docker run -d --name contenedor_bot --env-file .env bot-musica:$(date +%s)
