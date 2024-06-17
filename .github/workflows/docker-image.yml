@@ -19,6 +19,6 @@ jobs:
         docker stop contenedor_bot || true
         docker rm contenedor_bot || true
     - name: Build the Docker image
-      run: docker build -t bot-musica:$(date +%s) .  
+      run: sudo docker build -t bot-musica:$(date +%s) .  
     - name: Build the Docker image
-      run: docker run -d --name contenedor_bot --env-file .env bot-musica:$(date +%s)
+      run: sudo docker run -d --name contenedor_bot --env-file .env bot-musica:$(date +%s)
