@@ -26,5 +26,6 @@ jobs:
         run: docker build -t bot-musica:$(date +%s) .
       
       - name: Run Docker container
-        run: docker run -d --name contenedor_bot --env-file .env bot-musica:$(date +%s)
+        run: docker run -d --name contenedor_bot -e DISCORD_TOKEN=$DISCORD_TOKEN bot-musica:$(date +%s)
+
 
