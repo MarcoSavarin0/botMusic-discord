@@ -41,12 +41,14 @@ def run_bot():
         print(f'{client.user} is now jamming')
 
     async def play_next(ctx):
+        vote_disconnect[ctx.guild.id].clear()
+        vote_next[ctx.guild.id].clear()
         if queues[ctx.guild.id]:
             link = queues[ctx.guild.id].pop(0)
             await play(ctx, link=link)
         else:
             await asyncio.sleep(60)
-            if ctx.guild.id in voice_clients and not voice_clients[ctx.guild.id].is_playing():
+            if ctx.guild.id in voice_clients and not voice_clients[ctx.guild.id].is_playing() and queues.length(ctx.guild.id) == 0:
                 await disconnect(ctx)
 
     @client.command(name="poneme")
@@ -74,7 +76,11 @@ def run_bot():
 
             if voice_client.is_playing():
                 queues[ctx.guild.id].append(link)
-                await ctx.send(f"Added to queue: {data['title']}")
+                embed = discord.Embed(title="Lo agregue a la cola",
+                                      description=f"Agregado a la cola: {data['title']}",
+                                      color=discord.Color.red())
+                await ctx.send(embed=embed)
+                
             else:
                 voice_clients[ctx.guild.id].play(player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), client.loop))
                 embed = discord.Embed(title="Que temon",
@@ -96,6 +102,9 @@ def run_bot():
     async def pause(ctx):
         try:
             voice_clients[ctx.guild.id].pause()
+            embed = discord.Embed(description="Pausado por exceso de swag",
+                                  color=discord.Color.red())
+            await ctx.send(embed=embed)
             await ctx.send("Pausado por exceso de swag")
         except Exception as e:
             await ctx.send(f"Error pausing: {e}")
@@ -127,11 +136,15 @@ def run_bot():
             else:
                 if ctx.author.id not in vote_disconnect[ctx.guild.id]:
                     vote_disconnect[ctx.guild.id].append(ctx.author.id)
-                    await ctx.send(f"{ctx.author.name} voto para desconectarme :/. {len(vote_disconnect[ctx.guild.id])}/{required_votes(ctx)} votes needed.")
+                    embed = discord.Embed(title="Queres desconectarme?",
+                                          description=f"{ctx.author.name} voto para desconectarme :(. {len(vote_disconnect[ctx.guild.id])}/{required_votes(ctx)} votes needed.",
+                                          color=discord.Color.red())
+                    await ctx.send(embed=embed)
+
                     if len(vote_disconnect[ctx.guild.id]) >= required_votes(ctx):
                         await force_disconnect(ctx)
                 else:
-                    await ctx.send("Ya votaste para desconectar pedazo de gil.")
+                    await ctx.send(f"Ya votaste para desconectar pedazo de gil.@{ctx.author.name}")
         except Exception as e:
             await ctx.send(f"Error: {e}")
 
