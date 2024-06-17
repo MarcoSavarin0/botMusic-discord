@@ -7,18 +7,24 @@ on:
     branches: [ "main" ]
 
 jobs:
-
   build:
-
     runs-on: self-hosted
 
+    env:
+      DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+
     steps:
-    - uses: actions/checkout@v4
-    - name: Stop and remove existing container (if exists)
-      run: |
-        docker stop contenedor_bot || true
-        docker rm contenedor_bot || true
-    - name: Build the Docker image
-      run: sudo docker build -t bot-musica:$(date +%s) .  
-    - name: Build the Docker image
-      run: sudo docker run -d --name contenedor_bot --env-file .env bot-musica:$(date +%s)
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Stop and remove existing container (if exists)
+        run: |
+          docker stop contenedor_bot || true
+          docker rm contenedor_bot || true
+      
+      - name: Build the Docker image
+        run: docker build -t bot-musica:$(date +%s) .
+      
+      - name: Run Docker container
+        run: docker run -d --name contenedor_bot --env-file .env bot-musica:$(date +%s)
+
