@@ -12,6 +12,8 @@ jobs:
 
     env:
       DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
     steps:
       - name: Checkout code
@@ -23,9 +25,13 @@ jobs:
           docker rm contenedor_bot || true
       
       - name: Build the Docker image
-        run: docker build -t bot-musica:$(date +%s) .
+        run: docker build -t bot-musica:latest .
+      
+      - name: Log in to Docker Hub (if needed)
+        run: echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
       
       - name: Run Docker container
-        run: docker run -d --name contenedor_bot -e DISCORD_TOKEN=$DISCORD_TOKEN bot-musica:$(date +%s)
+        run: docker run -d --name contenedor_bot -e DISCORD_TOKEN=$DISCORD_TOKEN bot-musica:latest
+
 
 
