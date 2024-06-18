@@ -48,7 +48,7 @@ def run_bot():
             await play(ctx, link=link)
         else:
             await asyncio.sleep(60)
-            if ctx.guild.id in voice_clients and not voice_clients[ctx.guild.id].is_playing() and queues.length(ctx.guild.id) == 0:
+            if ctx.guild.id in voice_clients and not voice_clients[ctx.guild.id].is_playing():
                 await disconnect(ctx)
 
     @client.command(name="poneme")
