@@ -8,8 +8,6 @@ import urllib.parse
 import urllib.request
 import re
 from collections import defaultdict
-import requests
-
 
 def run_bot():
     load_dotenv()
@@ -23,6 +21,7 @@ def run_bot():
     voice_clients = {}
     vote_disconnect = defaultdict(list)
     vote_next = defaultdict(list)
+    sessionDuration = defaultdict(list)
     
     youtube_base_url = 'https://www.youtube.com/'
     youtube_results_url = youtube_base_url + 'results?'
@@ -35,7 +34,19 @@ def run_bot():
         'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
         'options': '-vn -filter:a "volume=0.25"'
     }
-
+    def convert_seconds_to_minutes(seconds):
+        minutes = seconds // 60
+        seconds = seconds % 60
+        return f"{minutes}:{seconds:02d}"
+    def sum_sessions(session_durations):
+        total = sum(session_durations)  
+        return total
+    def to_int(s):
+        try:
+            return int(s)
+        except ValueError:
+            print(f"Error: No se puede convertir '{s}' a entero.")
+        return None  
     @client.event
     async def on_ready():
         print(f'{client.user} is now jamming')
@@ -44,7 +55,10 @@ def run_bot():
         vote_disconnect[ctx.guild.id].clear()
         vote_next[ctx.guild.id].clear()
         if queues[ctx.guild.id]:
+            
             link = queues[ctx.guild.id].pop(0)
+            if ctx.guild.id in sessionDuration and sessionDuration[ctx.guild.id]:
+                sessionDuration[ctx.guild.id].pop(0)
             await play(ctx, link=link)
         else:
             await asyncio.sleep(60)
@@ -72,19 +86,33 @@ def run_bot():
             loop = asyncio.get_event_loop()
             data = await loop.run_in_executor(None, lambda: ytdl.extract_info(link, download=False))
             song = data['url']
+            duration = to_int(data['duration'])
+            if duration is None:
+                await ctx.send("Error: La duración del video no es válida.")
+                return
+            formatted_duration = convert_seconds_to_minutes(duration)
             player = discord.FFmpegOpusAudio(song, **ffmpeg_options)
-
+            
+            
+            
+            
             if voice_client.is_playing():
                 queues[ctx.guild.id].append(link)
+                sessionDuration[ctx.guild.id].append(duration)
+                total_duration = sum_sessions(sessionDuration[ctx.guild.id])
+                formatted_total_duration = convert_seconds_to_minutes(total_duration)
+
                 embed = discord.Embed(title="Lo agregue a la cola",
                                       description=f"Agregado a la cola: {data['title']}",
                                       color=discord.Color.red())
+                embed.add_field(name="Duración", value=f"{formatted_duration}", inline=False)
+                embed.add_field(name="Duración total", value=f"{formatted_total_duration}", inline=False)
                 await ctx.send(embed=embed)
                 
             else:
                 voice_clients[ctx.guild.id].play(player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), client.loop))
                 embed = discord.Embed(title="Que temon",
-                                      description=f"Esta sonando (temon): {data['title']}",
+                                      description=f"Esta sonando (temon): {data['title']} || ({formatted_duration})",
                                       color=discord.Color.red())
                 await ctx.send(embed=embed)
         except Exception as e:
@@ -175,16 +203,25 @@ def run_bot():
         try:
             if ctx.guild.id in queues and queues[ctx.guild.id]:
                 queue_list = []
+                duration_list = []
                 for link in queues[ctx.guild.id]:
                     if youtube_base_url in link:
                         data = await asyncio.get_event_loop().run_in_executor(None, lambda: ytdl.extract_info(link, download=False))
                         title = data.get("title", "Unknown title")
+                        duration = convert_seconds_to_minutes(data['duration'])
+                        duration_list.append(duration)
                         queue_list.append(title)
+                        
                     else:
                         queue_list.append(link)
+                total_duration = sum_sessions(sessionDuration[ctx.guild.id])
+                formatted_total_duration = convert_seconds_to_minutes(total_duration)
                 embed = discord.Embed(title="Cola de reproducción",
-                                      description=(f"En la cola hay ({len(queue_list)} canciones):\n" + "\n".join(queue_list)),
+                                      description=(f"En la cola hay ({len(queue_list)} canciones):\n"),
                                       color=discord.Color.blue())
+                for i in range(len(queue_list)):
+                    embed.add_field(name=queue_list[i], value=f"{duration_list[i]}", inline=False)
+                embed.add_field(name="Duración total", value=f"{formatted_total_duration}", inline=False)
                 await ctx.send(embed=embed)
                 
             else:
@@ -227,6 +264,7 @@ def run_bot():
                 if voice_clients[ctx.guild.id].is_playing():
                     voice_clients[ctx.guild.id].stop()
                 link = queues[ctx.guild.id].pop(0)
+                sessionDuration[ctx.guild.id].pop(0)
                 await play(ctx, link=link)
             else:
                 await ctx.send("No hay más canciones en mi cola")
