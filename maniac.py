@@ -236,7 +236,7 @@ def run_bot():
                               color=discord.Color.blue())
 
         embed.add_field(name="poneme", value="Reproduce una canción.", inline=False)
-        embed.add_field(name="limpia_cola", value="Limpia la cola de reproducción.", inline=False)
+        embed.add_field(name="limpia_cola", value="Me saca de la cola las reproducciones.", inline=False)
         embed.add_field(name="para", value="Pausa la reproducción actual.", inline=False)
         embed.add_field(name="segui", value="Reanuda la reproducción pausada.", inline=False)
         embed.add_field(name="lista", value="Muestra las canciones en la cola de reproducción.", inline=False)
