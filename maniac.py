@@ -26,7 +26,10 @@ def run_bot():
     youtube_base_url = 'https://www.youtube.com/'
     youtube_results_url = youtube_base_url + 'results?'
     youtube_watch_url = youtube_base_url + 'watch?v='
-    yt_dl_options = {"format": "bestaudio/best"}
+    yt_dl_options = {
+        "format": "bestaudio/best",
+        "cookiefile": "cookies.txt"
+    }
     ytdl = yt_dlp.YoutubeDL(yt_dl_options)
 
     ffmpeg_options = {
